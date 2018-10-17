@@ -4,6 +4,7 @@ defmodule ReverseProxyPlug do
   """
 
   alias Plug.Conn
+  require Logger
 
   @behaviour Plug
   @http_client HTTPoison
@@ -97,6 +98,12 @@ defmodule ReverseProxyPlug do
 
       %HTTPoison.AsyncEnd{} ->
         conn
+
+      # HOTFIX
+      {:ssl_closed, _} ->
+        Logger.warn("Received :ssl_closed message: #{inspect(conn)}")
+        stream_response(conn)
+
     end
   end
 
