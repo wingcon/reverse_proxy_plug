@@ -173,8 +173,7 @@ defmodule ReverseProxyPlug do
       %HTTPoison.AsyncHeaders{headers: headers} ->
         headers
         |> normalize_headers
-        |> Enum.reject(fn {header, _} -> header == "content-length" end)
-        |> Enum.concat([{"transfer-encoding", "chunked"}])
+        |> handle_chunked_headers(opts)
         |> Enum.reduce(conn, fn {header, value}, conn ->
           Conn.put_resp_header(conn, header, value)
         end)
@@ -194,7 +193,17 @@ defmodule ReverseProxyPlug do
         conn
     end
   end
-
+  
+  defp handle_chunked_headers(headers, options) do
+    if options[:keep_chunked_upstream_headers] do
+      headers
+    else
+      headers
+      |> Enum.reject(fn {header, _} -> header == "content-length" end)
+      |> Enum.concat([{"transfer-encoding", "chunked"}])
+    end
+  end
+  
   defp prepare_url(conn, overrides) do
     keys = [:scheme, :host, :port, :query_string]
 
