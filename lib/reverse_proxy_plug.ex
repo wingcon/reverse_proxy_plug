@@ -171,12 +171,15 @@ defmodule ReverseProxyPlug do
         end
 
       %HTTPoison.AsyncHeaders{headers: headers} ->
+      
+        chunked_from_upstream? = Enum.any?(headers, fn {key, value} ->
+          String.downcase(key) == "transfer-encoding" && String.downcase(value) == "chunked"
+        end)
+
         headers
         |> normalize_headers
-        |> handle_chunked_headers(opts)
-        |> Enum.reduce(conn, fn {header, value}, conn ->
-          Conn.put_resp_header(conn, header, value)
-        end)
+        |> handle_chunk_headers(chunked_from_upstream?)
+        |> Enum.reduce(conn, fn {header, value}, conn -> Conn.put_resp_header(conn, header, value) end)
         |> Conn.send_chunked(conn.status)
         |> stream_response(opts)
 
@@ -194,13 +197,13 @@ defmodule ReverseProxyPlug do
     end
   end
   
-  defp handle_chunked_headers(headers, options) do
-    if options[:keep_chunked_upstream_headers] do
-      headers
-    else
+  defp handle_chunk_headers(headers, chunked_from_upstream?) do
+    if chunked_from_upstream? do
       headers
       |> Enum.reject(fn {header, _} -> header == "content-length" end)
       |> Enum.concat([{"transfer-encoding", "chunked"}])
+    else
+      headers
     end
   end
   
