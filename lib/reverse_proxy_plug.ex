@@ -96,12 +96,15 @@ defmodule ReverseProxyPlug do
   def request(conn, body, opts) do
     {method, url, headers, client_options} = prepare_request(conn, opts)
 
+    # Ignore errors about self-signed certificates
+    options = client_options ++ [hackney: [:insecure]]
+    
     opts[:client].request(%HTTPoison.Request{
       method: method,
       url: url,
       body: body,
       headers: headers,
-      options: client_options
+      options: options
     })
   end
 
